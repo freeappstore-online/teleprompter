@@ -1,3 +1,4 @@
+
 {
   "name": "teleprompter",
   "short_name": "teleprompter",
@@ -9,6 +10,12 @@
   "id": "/",
   "scope": "/",
   "min_viewport_width": 320,
+  "permissions": [
+    {
+      "name": "clipboard",
+      "reason": "Allow users to paste scripts into the teleprompter."
+    }
+  ],
   "icons": [
     {
       "src": "/pwa-192x192.png",

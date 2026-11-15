@@ -1,55 +1,132 @@
+
 import { useEffect, useState } from "react";
 import { initApp } from "@freeappstore/sdk";
-import { type NavItem, PageHeader, Shell } from "@freeappstore/sdk/ui";
+import { type NavItem, Shell } from "@freeappstore/sdk/ui";
 
-// "teleprompter" is replaced by the CLI scaffold or deployment flow with this app's id.
+import Home from "./pages/Home";
+import Teleprompter from "./pages/Teleprompter";
+import Settings from "./pages/Settings";
+
 export const fas = initApp({ appId: "teleprompter" });
 
-// The app's screens. Shell renders them as the navbar: a <nav> in its topbar
-// with the current screen highlighted, collapsing to a menu on phones.
-// Add one entry per primary screen; `title` becomes the browser tab title.
 const NAV: NavItem[] = [
-  { label: "Home", href: "/", title: "teleprompter" },
-  { label: "About", href: "/about", title: "About — teleprompter" },
+  { label: "Home", href: "/", title: "Teleprompter" },
 ];
+
+const DEFAULT_SETTINGS = {
+  textSize: 22,
+  speed: 120,
+  showGuide: true,
+  mirrorText: false,
+  fullScreen: false,
+};
 
 export default function App() {
   const [path, setPath] = useState(() => window.location.pathname);
+  const [previousPath, setPreviousPath] = useState("/");
+  const [currentScript, setCurrentScript] = useState("");
 
-  // Keep the screen in step with the browser's back and forward buttons.
+  const [savedSettings, setSavedSettings] = useState(DEFAULT_SETTINGS);
+  const [draftSettings, setDraftSettings] = useState(DEFAULT_SETTINGS);
+
   useEffect(() => {
     const sync = () => setPath(window.location.pathname);
+
     window.addEventListener("popstate", sync);
     return () => window.removeEventListener("popstate", sync);
   }, []);
 
-  // Nav clicks switch screens without a page load. Shell scrolls to the top
-  // and moves focus to the new screen's PageHeader.
   const navigate = (href: string) => {
     window.history.pushState(null, "", href);
     setPath(window.location.pathname);
   };
 
+  const handleOpenSettings = () => {
+    setPreviousPath(path);
+    setDraftSettings({ ...savedSettings });
+    navigate("/settings");
+  };
+
+  const handleSaveSettings = () => {
+    setSavedSettings({ ...draftSettings });
+    navigate(previousPath);
+  };
+
+  const handleReset = () => {
+    setDraftSettings({ ...DEFAULT_SETTINGS });
+  };
+
+  const handleStart = (script: string) => {
+    setCurrentScript(script);
+    navigate("/teleprompter");
+  };
+
+  const hasUnsavedChanges =
+    draftSettings.textSize !== savedSettings.textSize ||
+    draftSettings.speed !== savedSettings.speed ||
+    draftSettings.showGuide !== savedSettings.showGuide ||
+    draftSettings.mirrorText !== savedSettings.mirrorText ||
+    draftSettings.fullScreen !== savedSettings.fullScreen;
+
   return (
-    <Shell app={fas} appName={"teleprompter"} nav={NAV} onNavigate={navigate}>
-      <div className="mx-auto w-full max-w-3xl p-4 sm:p-8">
-        {path === "/about" ? <About /> : <Home />}
+    <Shell
+      app={fas}
+      appName="Teleprompter"
+      nav={NAV}
+      onNavigate={navigate}
+    >
+      <div className="h-[calc(100dvh-70px)] min-h-0 overflow-hidden">
+        {path === "/settings" ? (
+          <Settings
+            textSize={draftSettings.textSize}
+            onTextSizeChange={(value) =>
+              setDraftSettings((prev) => ({ ...prev, textSize: value }))
+            }
+            speed={draftSettings.speed}
+            onSpeedChange={(value) =>
+              setDraftSettings((prev) => ({ ...prev, speed: value }))
+            }
+            showGuide={draftSettings.showGuide}
+            onShowGuideChange={(value) =>
+              setDraftSettings((prev) => ({ ...prev, showGuide: value }))
+            }
+            mirrorText={draftSettings.mirrorText}
+            onMirrorTextChange={(value) =>
+              setDraftSettings((prev) => ({ ...prev, mirrorText: value }))
+            }
+            fullScreen={draftSettings.fullScreen}
+            onFullScreenChange={(value) =>
+              setDraftSettings((prev) => ({ ...prev, fullScreen: value }))
+            }
+            hasUnsavedChanges={hasUnsavedChanges}
+            onBack={() => navigate(previousPath)}
+            onDone={handleSaveSettings}
+            onReset={handleReset}
+          />
+        ) : path === "/teleprompter" ? (
+          <Teleprompter
+            script={currentScript}
+            onClose={() => navigate("/")}
+            onSettings={handleOpenSettings}
+            textSize={savedSettings.textSize}
+            speed={savedSettings.speed}
+            showGuide={savedSettings.showGuide}
+            mirrorText={savedSettings.mirrorText}
+            fullScreen={savedSettings.fullScreen}
+            onFullScreenChange={(value) =>
+              setSavedSettings((prev) => ({
+                ...prev,
+                fullScreen: value,
+              }))
+            }
+          />
+        ) : (
+          <Home
+            onStart={handleStart}
+            onSettings={handleOpenSettings}
+          />
+        )}
       </div>
     </Shell>
-  );
-}
-
-function Home() {
-  return <PageHeader title={"Welcome to teleprompter"} description="Edit web/src/App.tsx to get started." />;
-}
-
-function About() {
-  return (
-    <>
-      <PageHeader title="About" />
-      <p style={{ color: "var(--muted)" }}>
-        teleprompter is a free app on <a href="https://freeappstore.online">FreeAppStore</a>.
-      </p>
-    </>
   );
 }
